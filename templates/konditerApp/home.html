@@ -41,7 +41,13 @@
     <div class="product-grid">
         {% for product in featured_products %}
             <article class="product-card">
+                {% if product.image %}
+                    <img class="product-image" src="{{ product.image.url }}" alt="{{ product.name }}">
+                {% else %}
+                    <div class="product-image placeholder">{{ product.category.name }}</div>
+                {% endif %}
                 <span class="tag">{{ product.category.name }}</span>
+                {% if product.sku %}<span class="sku">{{ product.sku }}</span>{% endif %}
                 <h3><a href="{{ product.get_absolute_url }}">{{ product.name }}</a></h3>
                 <p>{{ product.description|truncatechars:110 }}</p>
                 <div class="card-meta">

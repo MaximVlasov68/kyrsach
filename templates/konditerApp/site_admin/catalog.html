@@ -30,11 +30,12 @@
 
 <div class="table-wrap">
     <table>
-        <thead><tr><th>Товар</th><th>Категория</th><th>Цена</th><th>Наличие</th><th>Активен</th><th></th></tr></thead>
+        <thead><tr><th>Товар</th><th>SKU</th><th>Категория</th><th>Цена</th><th>Наличие</th><th>Активен</th><th></th></tr></thead>
         <tbody>
             {% for product in products %}
                 <tr>
                     <td>{{ product.name }}</td>
+                    <td>{{ product.sku }}</td>
                     <td>{{ product.category.name }}</td>
                     <td>{{ product.price }} ₽</td>
                     <td>{{ product.get_stock_status_display }}</td>
@@ -42,7 +43,7 @@
                     <td><a href="{% url 'site_admin_product_update' product.pk %}">Редактировать</a></td>
                 </tr>
             {% empty %}
-                <tr><td colspan="6">Товары не найдены.</td></tr>
+                <tr><td colspan="7">Товары не найдены.</td></tr>
             {% endfor %}
         </tbody>
     </table>

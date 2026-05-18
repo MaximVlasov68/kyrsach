@@ -65,6 +65,7 @@ def catalog(request):
     if query:
         products = products.filter(
             Q(name__icontains=query)
+            | Q(sku__icontains=query)
             | Q(description__icontains=query)
             | Q(ingredients__icontains=query)
             | Q(category__name__icontains=query)
@@ -111,7 +112,10 @@ def search(request):
     requests = CustomerRequest.objects.none()
     if query:
         products = Product.objects.filter(is_active=True).filter(
-            Q(name__icontains=query) | Q(description__icontains=query) | Q(category__name__icontains=query)
+            Q(name__icontains=query)
+            | Q(sku__icontains=query)
+            | Q(description__icontains=query)
+            | Q(category__name__icontains=query)
         ).select_related('category')[:10]
         if is_site_admin(request.user):
             requests = CustomerRequest.objects.filter(
@@ -266,7 +270,7 @@ def site_admin_catalog(request):
     query = request.GET.get('q', '').strip()
     products = Product.objects.select_related('category')
     if query:
-        products = products.filter(Q(name__icontains=query) | Q(category__name__icontains=query))
+        products = products.filter(Q(name__icontains=query) | Q(sku__icontains=query) | Q(category__name__icontains=query))
     categories = ProductCategory.objects.all()
     return render(
         request,
@@ -278,7 +282,7 @@ def site_admin_catalog(request):
 @user_passes_test(is_site_admin)
 def site_admin_product_create(request):
     if request.method == 'POST':
-        form = ProductForm(request.POST)
+        form = ProductForm(request.POST, request.FILES)
         if form.is_valid():
             form.save()
             messages.success(request, 'Товар создан.')
@@ -292,7 +296,7 @@ def site_admin_product_create(request):
 def site_admin_product_update(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
-        form = ProductForm(request.POST, instance=product)
+        form = ProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
             form.save()
             messages.success(request, 'Товар обновлен.')

@@ -11,6 +11,22 @@
 <body>
     <header class="site-header">
         <a class="brand" href="{% url 'home' %}">Сладкая фабрика</a>
+
+        <form class="header-search" action="{% url 'search' %}" method="get" role="search">
+            <label class="visually-hidden" for="site-search">Поиск по сайту</label>
+            <input
+                id="site-search"
+                type="search"
+                name="q"
+                value="{{ request.GET.q }}"
+                placeholder="Найти торт, шоколад или заявку"
+                autocomplete="off"
+            >
+            <button type="submit" aria-label="Найти">
+                <span aria-hidden="true">⌕</span>
+            </button>
+        </form>
+
         <button class="menu-toggle" type="button" data-menu-toggle aria-label="Открыть меню">☰</button>
         <nav class="main-nav" data-main-nav>
             <a href="{% url 'catalog' %}">Каталог</a>
@@ -44,10 +60,7 @@
 
     <footer class="site-footer">
         <span>Кондитерская фабрика</span>
-        <form class="footer-search" action="{% url 'search' %}" method="get">
-            <input type="search" name="q" placeholder="Поиск по сайту" aria-label="Поиск">
-            <button type="submit">Найти</button>
-        </form>
+        <a href="{% url 'catalog' %}">Каталог продукции</a>
     </footer>
 </body>
 </html>

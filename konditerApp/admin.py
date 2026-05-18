@@ -20,10 +20,10 @@ class ProductCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'price', 'weight_grams', 'stock_status', 'is_active', 'is_featured')
+    list_display = ('name', 'sku', 'category', 'price', 'weight_grams', 'stock_status', 'is_active', 'is_featured')
     list_filter = ('category', 'stock_status', 'is_active', 'is_featured')
     prepopulated_fields = {'slug': ('name',)}
-    search_fields = ('name', 'description', 'ingredients')
+    search_fields = ('name', 'sku', 'description', 'ingredients')
 
 
 @admin.register(CustomerRequest)

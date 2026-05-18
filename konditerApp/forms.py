@@ -9,15 +9,10 @@ from .validators import (
     validate_document_extension,
     validate_document_mime,
     validate_phone,
+    validate_product_image_extension,
+    validate_product_image_mime,
     validate_safe_name,
 )
-
-
-class BaseStyledForm(forms.Form):
-    def apply_form_control_class(self):
-        for field in self.fields.values():
-            css_class = field.widget.attrs.get('class', '')
-            field.widget.attrs['class'] = f'{css_class} form-control'.strip()
 
 
 class RegistrationForm(UserCreationForm):
@@ -241,8 +236,10 @@ class ProductForm(forms.ModelForm):
         model = Product
         fields = [
             'category',
+            'sku',
             'name',
             'slug',
+            'image',
             'description',
             'ingredients',
             'price',
@@ -253,8 +250,10 @@ class ProductForm(forms.ModelForm):
         ]
         labels = {
             'category': 'Категория',
+            'sku': 'Артикул / SKU',
             'name': 'Название',
             'slug': 'URL-идентификатор',
+            'image': 'Изображение',
             'description': 'Описание',
             'ingredients': 'Состав',
             'price': 'Цена',
@@ -277,3 +276,18 @@ class ProductForm(forms.ModelForm):
         value = normalize_text(self.cleaned_data['name'])
         validate_safe_name(value)
         return value
+
+    def clean_sku(self):
+        value = normalize_text(self.cleaned_data.get('sku'))
+        if value and not value.replace('-', '').replace('_', '').isalnum():
+            raise ValidationError('SKU может содержать буквы, цифры, дефис и подчеркивание.')
+        return value.upper() if value else None
+
+    def clean_image(self):
+        image = self.cleaned_data.get('image')
+        if image:
+            validate_product_image_extension(image)
+            validate_product_image_mime(image)
+            if image.size > 5 * 1024 * 1024:
+                raise ValidationError('Размер изображения не должен превышать 5 МБ.')
+        return image

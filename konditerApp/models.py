@@ -7,13 +7,24 @@ from django.core.validators import FileExtensionValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
 
-from .validators import ALLOWED_DOCUMENT_EXTENSIONS, validate_document_extension
+from .validators import (
+    ALLOWED_DOCUMENT_EXTENSIONS,
+    ALLOWED_PRODUCT_IMAGE_EXTENSIONS,
+    validate_document_extension,
+    validate_product_image_extension,
+)
 
 
 def document_upload_path(instance, filename):
     extension = Path(filename).suffix.lower()
     owner = instance.user_id or 'anonymous'
     return f'uploads/documents/user_{owner}/{uuid.uuid4().hex}{extension}'
+
+
+def product_image_upload_path(instance, filename):
+    extension = Path(filename).suffix.lower()
+    slug = instance.slug or 'product'
+    return f'uploads/products/{slug}/{uuid.uuid4().hex}{extension}'
 
 
 class UserProfile(models.Model):
@@ -65,8 +76,17 @@ class Product(models.Model):
         on_delete=models.PROTECT,
         related_name='products',
     )
+    sku = models.CharField(max_length=40, unique=True, blank=True, null=True)
     name = models.CharField(max_length=160)
     slug = models.SlugField(max_length=180, unique=True)
+    image = models.FileField(
+        upload_to=product_image_upload_path,
+        blank=True,
+        validators=[
+            FileExtensionValidator(allowed_extensions=sorted(ALLOWED_PRODUCT_IMAGE_EXTENSIONS)),
+            validate_product_image_extension,
+        ],
+    )
     description = models.TextField()
     ingredients = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
