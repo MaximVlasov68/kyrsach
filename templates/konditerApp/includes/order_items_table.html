@@ -1,0 +1,32 @@
+<div class="table-wrap order-composition">
+    <table>
+        <thead>
+            <tr>
+                <th>Товар</th>
+                <th>SKU</th>
+                <th>Количество</th>
+                <th>Цена за единицу</th>
+                <th>Сумма</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order.items.all %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.product.sku|default:'-' }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.price }} ₽</td>
+                    <td>{{ item.subtotal }} ₽</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">В заказе нет позиций.</td></tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="4">Итого</th>
+                <th>{{ order.total_price }} ₽</th>
+            </tr>
+        </tfoot>
+    </table>
+</div>

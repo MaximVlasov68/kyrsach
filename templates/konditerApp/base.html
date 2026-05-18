@@ -19,7 +19,7 @@
                 type="search"
                 name="q"
                 value="{{ request.GET.q }}"
-                placeholder="Найти торт, шоколад или заявку"
+                placeholder="Найти торт, шоколад или заказ"
                 autocomplete="off"
             >
             <button type="submit" aria-label="Найти">
@@ -29,19 +29,20 @@
 
         <button class="menu-toggle" type="button" data-menu-toggle aria-label="Открыть меню">☰</button>
         <nav class="main-nav" data-main-nav>
-            <a href="{% url 'catalog' %}">Каталог</a>
-            <a href="{% url 'request_create' %}">Заявка</a>
             {% if user.is_authenticated %}
-                <a href="{% url 'dashboard' %}">Кабинет</a>
-                {% if user.is_staff or user.is_superuser or user.profile.role == 'admin' %}
+                {% if is_site_admin_user %}
                     <a href="{% url 'site_admin_dashboard' %}">Админ-панель</a>
+                {% elif is_customer_user %}
+                    <a href="{% url 'dashboard' %}">Кабинет</a>
                 {% endif %}
                 <form method="post" action="{% url 'logout' %}" class="inline-form">
                     {% csrf_token %}
                     <button type="submit" class="link-button">Выйти</button>
                 </form>
             {% else %}
-                <a href="{% url 'login' %}">Войти</a>
+                <a href="{% url 'home' %}">Главная</a>
+                <a href="{% url 'catalog' %}">Каталог</a>
+                <a href="{% url 'login' %}">Вход</a>
                 <a class="button small" href="{% url 'register' %}">Регистрация</a>
             {% endif %}
         </nav>

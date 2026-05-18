@@ -412,6 +412,19 @@ textarea {
     font-weight: 400;
 }
 
+.order-preview {
+    display: grid;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.order-items {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--muted);
+}
+
 .error,
 .form-errors,
 .invalid-hint {
@@ -452,6 +465,27 @@ textarea {
     display: flex;
     justify-content: space-between;
     gap: 16px;
+}
+
+.order-form {
+    display: grid;
+    gap: 14px;
+    margin: 18px 0 12px;
+}
+
+.order-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: #fbf2ea;
+    color: var(--ink);
+}
+
+.order-total strong {
+    color: var(--accent-dark);
 }
 
 .admin-nav {
@@ -497,6 +531,26 @@ table {
     width: 100%;
     border-collapse: collapse;
     min-width: 760px;
+}
+
+.nested-table {
+    min-width: 520px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+}
+
+.nested-table th,
+.nested-table td {
+    padding: 8px;
+}
+
+.order-composition table {
+    min-width: 680px;
+}
+
+.order-composition tfoot th {
+    background: #fbf2ea;
 }
 
 th,

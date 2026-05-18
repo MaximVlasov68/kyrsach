@@ -19,14 +19,48 @@
 
 <div class="table-wrap">
     <table>
-        <thead><tr><th>ID</th><th>Клиент</th><th>Контакты</th><th>Сообщение</th><th>Статус</th></tr></thead>
+        <thead>
+            <tr>
+                <th>Заявка</th>
+                <th>Клиент</th>
+                <th>Контакты</th>
+                <th>Состав</th>
+                <th>Сообщение</th>
+                <th>Итого</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
         <tbody>
             {% for item in requests %}
                 <tr>
-                    <td>{{ item.id }}</td>
-                    <td>{{ item.name }}<br><span class="muted">{{ item.get_request_type_display }}</span></td>
+                    <td>#{{ item.id }}<br><span class="muted">{{ item.created_at|date:'d.m.Y H:i' }}</span></td>
+                    <td>
+                        {{ item.name }}<br>
+                        <span class="muted">{{ item.get_request_type_display }}</span>
+                        {% if item.user %}
+                            <br><span class="muted">{{ item.user.username }}</span>
+                        {% endif %}
+                    </td>
                     <td>{{ item.email }}<br>{{ item.phone }}</td>
+                    <td>
+                        <table class="nested-table">
+                            <thead><tr><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead>
+                            <tbody>
+                                {% for request_item in item.items.all %}
+                                    <tr>
+                                        <td>{{ request_item.product.name }}{% if request_item.product.sku %}<br><span class="muted">{{ request_item.product.sku }}</span>{% endif %}</td>
+                                        <td>{{ request_item.quantity }}</td>
+                                        <td>{{ request_item.price }} ₽</td>
+                                        <td>{{ request_item.subtotal }} ₽</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr><td colspan="4">Состав заказа не указан.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </td>
                     <td>{{ item.message|truncatechars:80 }}</td>
+                    <td><strong>{{ item.total_price }} ₽</strong></td>
                     <td>
                         <form method="post" action="{% url 'site_admin_request_update' item.pk %}" class="row-form vertical">
                             {% csrf_token %}
@@ -41,7 +75,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="5">Заявки не найдены.</td></tr>
+                <tr><td colspan="7">Заявки не найдены.</td></tr>
             {% endfor %}
         </tbody>
     </table>

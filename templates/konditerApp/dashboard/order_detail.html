@@ -1,0 +1,22 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Заказ #{{ order.pk }}{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Личный кабинет</p>
+        <h1>Заказ #{{ order.pk }}</h1>
+        <p class="muted">{{ order.created_at|date:'d.m.Y H:i' }} · {{ order.get_status_display }}</p>
+    </div>
+    <a class="button secondary" href="{% url 'dashboard' %}">Назад в кабинет</a>
+</section>
+
+<section class="panel">
+    <h2>Состав заказа</h2>
+    {% include 'konditerApp/includes/order_items_table.html' %}
+    {% if order.customer_comment %}
+        <p class="muted">Комментарий: {{ order.customer_comment }}</p>
+    {% endif %}
+</section>
+{% endblock %}

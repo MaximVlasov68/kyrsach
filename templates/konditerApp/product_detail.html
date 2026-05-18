@@ -19,13 +19,38 @@
             <p>{{ product.ingredients }}</p>
         {% endif %}
     </article>
+
     <aside class="side-panel">
         <dl class="facts">
             <div><dt>Цена</dt><dd>{{ product.price }} ₽</dd></div>
             <div><dt>Вес</dt><dd>{{ product.weight_grams }} г</dd></div>
             <div><dt>Наличие</dt><dd>{{ product.get_stock_status_display }}</dd></div>
         </dl>
-        <a class="button full" href="{% url 'request_create' %}?product={{ product.slug }}">Оставить заявку</a>
+
+        <form method="post" action="{% url 'order_create' product.slug %}" class="order-form" data-order-form data-price="{{ product.price|floatformat:2 }}" data-validate-form>
+            {% csrf_token %}
+            {% for field in order_form %}
+                <label class="form-field">
+                    <span>{{ field.label }}</span>
+                    {{ field }}
+                    {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                    {% for error in field.errors %}
+                        <small class="error">{{ error }}</small>
+                    {% endfor %}
+                </label>
+            {% endfor %}
+            <div class="order-total">
+                <span>Итого</span>
+                <strong data-order-total>{{ product.price }} ₽</strong>
+            </div>
+            <button class="full" type="submit">Оформить заказ</button>
+        </form>
+
+        {% if user.is_authenticated %}
+            <a class="button secondary full" href="{% url 'request_create' %}?product={{ product.slug }}">Оставить заявку</a>
+        {% else %}
+            <a class="button secondary full" href="{% url 'login' %}?next={% url 'request_create' %}?product={{ product.slug }}">Войти, чтобы оставить заявку</a>
+        {% endif %}
     </aside>
 </section>
 {% endblock %}

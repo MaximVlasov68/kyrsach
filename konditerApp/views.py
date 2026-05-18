@@ -3,6 +3,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -12,11 +13,12 @@ from .forms import (
     CategoryForm,
     CustomerRequestForm,
     DocumentUploadForm,
+    ProductOrderForm,
     ProductForm,
     ProfileForm,
     RegistrationForm,
 )
-from .models import CustomerRequest, Product, ProductCategory, UploadedDocument, UserProfile
+from .models import CustomerRequest, CustomerRequestItem, Order, OrderItem, Product, ProductCategory, UploadedDocument, UserProfile
 from .services import send_registration_email, send_request_created_email
 
 
@@ -42,7 +44,7 @@ def paginate(request, queryset, per_page=10):
 def home(request):
     featured_products = Product.objects.filter(is_active=True, is_featured=True).select_related('category')[:6]
     categories = ProductCategory.objects.filter(is_active=True)[:8]
-    request_form = CustomerRequestForm()
+    request_form = CustomerRequestForm(user=request.user)
     return render(
         request,
         'konditerApp/home.html',
@@ -102,14 +104,52 @@ def catalog(request):
 
 def product_detail(request, slug):
     product = get_object_or_404(Product.objects.select_related('category'), slug=slug, is_active=True)
-    form = CustomerRequestForm(initial={'product': product, 'request_type': CustomerRequest.RequestType.ORDER})
-    return render(request, 'konditerApp/product_detail.html', {'product': product, 'form': form})
+    form = CustomerRequestForm(initial={'product': product, 'request_type': CustomerRequest.RequestType.ORDER}, user=request.user)
+    order_form = ProductOrderForm(product=product)
+    return render(request, 'konditerApp/product_detail.html', {'product': product, 'form': form, 'order_form': order_form})
+
+
+@login_required
+def order_create(request, slug):
+    product = get_object_or_404(Product.objects.select_related('category'), slug=slug, is_active=True)
+    if request.method != 'POST':
+        return redirect(product.get_absolute_url())
+
+    form = ProductOrderForm(request.POST, product=product)
+    if form.is_valid():
+        with transaction.atomic():
+            order = Order.objects.create(
+                user=request.user,
+                customer_comment=form.cleaned_data.get('customer_comment', ''),
+            )
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                quantity=form.cleaned_data['quantity'],
+                price=product.price,
+            )
+            order.recalculate_total()
+        messages.success(request, f'Заказ #{order.pk} создан. Итоговая сумма: {order.total_price} ₽.')
+        return redirect('dashboard')
+
+    return render(request, 'konditerApp/product_detail.html', {'product': product, 'form': CustomerRequestForm(initial={'product': product}, user=request.user), 'order_form': form})
+
+
+@login_required
+def order_detail(request, pk):
+    order = get_object_or_404(Order.objects.prefetch_related('items__product'), pk=pk)
+    if is_site_admin(request.user):
+        return redirect('site_admin_order_detail', pk=order.pk)
+    if order.user_id != request.user.id:
+        raise Http404()
+    return render(request, 'konditerApp/dashboard/order_detail.html', {'order': order})
 
 
 def search(request):
     query = request.GET.get('q', '').strip()
     products = Product.objects.none()
     requests = CustomerRequest.objects.none()
+    orders = Order.objects.none()
     if query:
         products = Product.objects.filter(is_active=True).filter(
             Q(name__icontains=query)
@@ -121,7 +161,16 @@ def search(request):
             requests = CustomerRequest.objects.filter(
                 Q(name__icontains=query) | Q(email__icontains=query) | Q(message__icontains=query)
             )[:10]
-    return render(request, 'konditerApp/search.html', {'query': query, 'products': products, 'requests': requests})
+            order_filter = (
+                Q(user__username__icontains=query)
+                | Q(user__email__icontains=query)
+                | Q(items__product__name__icontains=query)
+                | Q(items__product__sku__icontains=query)
+            )
+            if query.isdigit():
+                order_filter |= Q(id=int(query))
+            orders = Order.objects.filter(order_filter).distinct().prefetch_related('items__product')[:10]
+    return render(request, 'konditerApp/search.html', {'query': query, 'products': products, 'requests': requests, 'orders': orders})
 
 
 def register(request):
@@ -152,12 +201,13 @@ def dashboard(request):
     if is_site_admin(request.user):
         return redirect('site_admin_dashboard')
     profile = get_profile(request.user)
-    requests = CustomerRequest.objects.filter(user=request.user).select_related('product')[:5]
+    requests = CustomerRequest.objects.filter(user=request.user).select_related('product').prefetch_related('items__product')[:5]
+    orders = Order.objects.filter(user=request.user).prefetch_related('items__product')[:5]
     documents = UploadedDocument.objects.filter(user=request.user)[:5]
     return render(
         request,
         'konditerApp/dashboard/customer.html',
-        {'profile': profile, 'requests': requests, 'documents': documents},
+        {'profile': profile, 'requests': requests, 'orders': orders, 'documents': documents},
     )
 
 
@@ -175,6 +225,7 @@ def profile_edit(request):
     return render(request, 'konditerApp/dashboard/profile_form.html', {'form': form})
 
 
+@login_required
 def request_create(request):
     initial = {}
     product_slug = request.GET.get('product')
@@ -185,17 +236,23 @@ def request_create(request):
             initial['request_type'] = CustomerRequest.RequestType.ORDER
 
     if request.method == 'POST':
-        form = CustomerRequestForm(request.POST)
+        form = CustomerRequestForm(request.POST, user=request.user)
         if form.is_valid():
-            customer_request = form.save(commit=False)
-            if request.user.is_authenticated:
+            with transaction.atomic():
+                customer_request = form.save(commit=False)
                 customer_request.user = request.user
-            customer_request.save()
+                customer_request.save()
+                CustomerRequestItem.objects.create(
+                    request=customer_request,
+                    product=form.cleaned_data['product'],
+                    quantity=form.cleaned_data['quantity'],
+                    price=form.cleaned_data['product'].price,
+                )
             send_request_created_email(customer_request)
             messages.success(request, 'Заявка отправлена. Мы свяжемся с вами после обработки.')
-            return redirect('dashboard' if request.user.is_authenticated else 'home')
+            return redirect('dashboard')
     else:
-        form = CustomerRequestForm(initial=initial)
+        form = CustomerRequestForm(initial=initial, user=request.user)
     return render(request, 'konditerApp/request_form.html', {'form': form})
 
 
@@ -225,14 +282,16 @@ def site_admin_dashboard(request):
     stats = {
         'users_count': User.objects.count(),
         'products_count': Product.objects.count(),
+        'orders_count': Order.objects.count(),
         'requests_new': CustomerRequest.objects.filter(status=CustomerRequest.Status.NEW).count(),
         'documents_count': UploadedDocument.objects.count(),
     }
-    recent_requests = CustomerRequest.objects.select_related('user', 'product')[:8]
+    recent_requests = CustomerRequest.objects.select_related('user', 'product').prefetch_related('items__product')[:8]
+    recent_orders = Order.objects.select_related('user').prefetch_related('items__product')[:8]
     return render(
         request,
         'konditerApp/site_admin/dashboard.html',
-        {'stats': stats, 'recent_requests': recent_requests},
+        {'stats': stats, 'recent_requests': recent_requests, 'recent_orders': recent_orders},
     )
 
 
@@ -323,7 +382,7 @@ def site_admin_category_create(request):
 def site_admin_requests(request):
     status = request.GET.get('status', '').strip()
     query = request.GET.get('q', '').strip()
-    requests = CustomerRequest.objects.select_related('user', 'product')
+    requests = CustomerRequest.objects.select_related('user', 'product').prefetch_related('items__product')
     if status:
         requests = requests.filter(status=status)
     if query:
@@ -338,6 +397,54 @@ def site_admin_requests(request):
             'statuses': CustomerRequest.Status.choices,
         },
     )
+
+
+@user_passes_test(is_site_admin)
+def site_admin_orders(request):
+    status = request.GET.get('status', '').strip()
+    query = request.GET.get('q', '').strip()
+    orders = Order.objects.select_related('user').prefetch_related('items__product')
+    if status:
+        orders = orders.filter(status=status)
+    if query:
+        order_filter = (
+            Q(user__username__icontains=query)
+            | Q(user__email__icontains=query)
+            | Q(items__product__name__icontains=query)
+            | Q(items__product__sku__icontains=query)
+        )
+        if query.isdigit():
+            order_filter |= Q(id=int(query))
+        orders = orders.filter(order_filter).distinct()
+    return render(
+        request,
+        'konditerApp/site_admin/orders.html',
+        {
+            'orders': paginate(request, orders),
+            'status': status,
+            'query': query,
+            'statuses': Order.Status.choices,
+        },
+    )
+
+
+@user_passes_test(is_site_admin)
+def site_admin_order_detail(request, pk):
+    order = get_object_or_404(Order.objects.select_related('user').prefetch_related('items__product'), pk=pk)
+    return render(request, 'konditerApp/site_admin/order_detail.html', {'order': order, 'statuses': Order.Status.choices})
+
+
+@user_passes_test(is_site_admin)
+@require_POST
+def site_admin_order_update(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+    status = request.POST.get('status')
+    if status in Order.Status.values:
+        order.status = status
+        order.admin_comment = request.POST.get('admin_comment', '').strip()
+        order.save(update_fields=['status', 'admin_comment', 'updated_at'])
+        messages.success(request, 'Заказ обновлен.')
+    return redirect('site_admin_orders')
 
 
 @user_passes_test(is_site_admin)

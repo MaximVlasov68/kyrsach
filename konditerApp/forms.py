@@ -3,7 +3,7 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
-from .models import CustomerRequest, Product, ProductCategory, UploadedDocument, UserProfile
+from .models import CustomerRequest, Order, Product, ProductCategory, UploadedDocument, UserProfile
 from .validators import (
     normalize_text,
     validate_document_extension,
@@ -121,9 +121,17 @@ class ProfileForm(forms.ModelForm):
 
 
 class CustomerRequestForm(forms.ModelForm):
+    quantity = forms.IntegerField(
+        label='Количество',
+        min_value=1,
+        initial=1,
+        required=True,
+        widget=forms.NumberInput(attrs={'min': 1, 'step': 1}),
+    )
+
     class Meta:
         model = CustomerRequest
-        fields = ['request_type', 'product', 'name', 'email', 'phone', 'message']
+        fields = ['request_type', 'product', 'quantity', 'name', 'email', 'phone', 'message']
         labels = {
             'request_type': 'Тип обращения',
             'product': 'Товар',
@@ -137,15 +145,68 @@ class CustomerRequestForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        self.fields['product'].required = False
+        self.fields['product'].required = True
         self.fields['product'].queryset = Product.objects.filter(is_active=True).select_related('category')
+        if self.user and self.user.is_authenticated:
+            self.fields['name'].initial = self.fields['name'].initial or self.user.get_full_name() or self.user.username
+            self.fields['email'].initial = self.fields['email'].initial or self.user.email
+            profile = getattr(self.user, 'profile', None)
+            if profile:
+                self.fields['phone'].initial = self.fields['phone'].initial or profile.phone
         for field in self.fields.values():
             field.widget.attrs.setdefault('class', 'form-control')
 
     def clean_name(self):
         value = normalize_text(self.cleaned_data['name'])
         validate_safe_name(value)
+        return value
+
+    def clean_quantity(self):
+        quantity = self.cleaned_data['quantity']
+        if quantity < 1:
+            raise ValidationError('Количество должно быть не меньше 1.')
+        return quantity
+
+    def clean_product(self):
+        product = self.cleaned_data['product']
+        if product.stock_status == Product.StockStatus.UNAVAILABLE:
+            raise ValidationError('Этот товар сейчас недоступен для заказа.')
+        return product
+
+
+class ProductOrderForm(forms.Form):
+    quantity = forms.IntegerField(
+        label='Количество',
+        min_value=1,
+        initial=1,
+        widget=forms.NumberInput(attrs={'min': 1, 'step': 1, 'data-order-quantity': 'true'}),
+    )
+    customer_comment = forms.CharField(
+        label='Комментарий к заказу',
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 3, 'placeholder': 'Например: дата, упаковка или пожелания'}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.product = kwargs.pop('product')
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
+
+    def clean_quantity(self):
+        quantity = self.cleaned_data['quantity']
+        if quantity < 1:
+            raise ValidationError('Количество должно быть не меньше 1.')
+        if self.product.stock_status == Product.StockStatus.UNAVAILABLE:
+            raise ValidationError('Этот товар сейчас недоступен для заказа.')
+        return quantity
+
+    def clean_customer_comment(self):
+        value = normalize_text(self.cleaned_data.get('customer_comment'))
+        if any(symbol in value for symbol in ['<', '>', '{', '}']):
+            raise ValidationError('Комментарий содержит недопустимые символы.')
         return value
 
     def clean_phone(self):

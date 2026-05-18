@@ -1,0 +1,73 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Заказы{% endblock %}
+
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Админ-панель</p><h1>Заказы</h1></div></section>
+{% include 'konditerApp/includes/admin_nav.html' %}
+
+<form class="filters" method="get">
+    <input type="search" name="q" value="{{ query }}" placeholder="Номер, клиент, товар или SKU">
+    <select name="status">
+        <option value="">Все статусы</option>
+        {% for value, label in statuses %}
+            <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Фильтр</button>
+</form>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Заказ</th>
+                <th>Клиент</th>
+                <th>Состав</th>
+                <th>Итого</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+                <tr>
+                    <td><a href="{% url 'site_admin_order_detail' order.pk %}">#{{ order.pk }}</a><br><span class="muted">{{ order.created_at|date:'d.m.Y H:i' }}</span></td>
+                    <td>{{ order.user.username }}<br><span class="muted">{{ order.user.email }}</span></td>
+                    <td>
+                        <table class="nested-table">
+                            <thead><tr><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead>
+                            <tbody>
+                                {% for item in order.items.all %}
+                                    <tr>
+                                        <td>{{ item.product.name }}{% if item.product.sku %}<br><span class="muted">{{ item.product.sku }}</span>{% endif %}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>{{ item.price }} ₽</td>
+                                        <td>{{ item.subtotal }} ₽</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% if order.customer_comment %}<p class="muted">Комментарий: {{ order.customer_comment }}</p>{% endif %}
+                    </td>
+                    <td><strong>{{ order.total_price }} ₽</strong></td>
+                    <td>
+                        <form method="post" action="{% url 'site_admin_order_update' order.pk %}" class="row-form vertical">
+                            {% csrf_token %}
+                            <select name="status">
+                                {% for value, label in statuses %}
+                                    <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <input type="text" name="admin_comment" value="{{ order.admin_comment }}" placeholder="Комментарий">
+                            <button type="submit">Сохранить</button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">Заказы не найдены.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include 'konditerApp/includes/pagination.html' with page_obj=orders %}
+{% endblock %}

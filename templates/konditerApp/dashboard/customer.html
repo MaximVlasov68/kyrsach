@@ -17,14 +17,46 @@
 
 <section class="dashboard-grid">
     <article class="panel">
+        <h2>Мои заказы</h2>
+        {% for order in orders %}
+            <div class="order-preview">
+                <div class="list-row">
+                    <div>
+                        <strong><a href="{% url 'order_detail' order.pk %}">Заказ #{{ order.pk }}</a></strong>
+                        <span>{{ order.created_at|date:'d.m.Y H:i' }}</span>
+                    </div>
+                    <span class="status">{{ order.get_status_display }}</span>
+                </div>
+                <ul class="order-items">
+                    {% for item in order.items.all %}
+                        <li>{{ item.product.name }} x {{ item.quantity }} — {{ item.subtotal }} ₽</li>
+                    {% endfor %}
+                </ul>
+                <div class="card-meta"><span>Итого</span><strong>{{ order.total_price }} ₽</strong></div>
+            </div>
+        {% empty %}
+            <p class="muted">Заказов пока нет.</p>
+        {% endfor %}
+    </article>
+
+    <article class="panel">
         <h2>Мои заявки</h2>
         {% for item in requests %}
-            <div class="list-row">
-                <div>
-                    <strong>{{ item.get_request_type_display }}</strong>
-                    <span>{{ item.created_at|date:'d.m.Y H:i' }}</span>
+            <div class="order-preview">
+                <div class="list-row">
+                    <div>
+                        <strong>{{ item.get_request_type_display }} #{{ item.pk }}</strong>
+                        <span>{{ item.created_at|date:'d.m.Y H:i' }}</span>
+                    </div>
+                    <span class="status">{{ item.get_status_display }}</span>
                 </div>
-                <span class="status">{{ item.get_status_display }}</span>
+                <ul class="order-items">
+                    {% for request_item in item.items.all %}
+                        <li>{{ request_item.product.name }} x {{ request_item.quantity }} — {{ request_item.subtotal }} ₽</li>
+                    {% empty %}
+                        <li>Состав заказа не указан.</li>
+                    {% endfor %}
+                </ul>
             </div>
         {% empty %}
             <p class="muted">Заявок пока нет.</p>

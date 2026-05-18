@@ -10,7 +10,11 @@
         <p>Каталог продукции, заявки, документы и личный кабинет в одном аккуратном веб-приложении.</p>
         <div class="actions">
             <a class="button" href="{% url 'catalog' %}">Смотреть каталог</a>
-            <a class="button secondary" href="{% url 'request_create' %}">Оставить заявку</a>
+            {% if user.is_authenticated %}
+                <a class="button secondary" href="{% url 'request_create' %}">Оставить заявку</a>
+            {% else %}
+                <a class="button secondary" href="{% url 'login' %}?next={% url 'request_create' %}">Войти, чтобы оставить заявку</a>
+            {% endif %}
         </div>
     </div>
     <div class="hero-panel">

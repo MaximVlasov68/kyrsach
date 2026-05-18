@@ -50,7 +50,7 @@
                 <strong>{{ product.price }} ₽</strong>
                 <span>{{ product.weight_grams }} г</span>
             </div>
-            <a class="button small" href="{% url 'request_create' %}?product={{ product.slug }}">Заказать</a>
+            <a class="button small" href="{{ product.get_absolute_url }}">Выбрать количество</a>
         </article>
     {% empty %}
         <p class="muted">По выбранным фильтрам ничего не найдено.</p>

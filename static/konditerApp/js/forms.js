@@ -65,6 +65,24 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    document.querySelectorAll('[data-order-form]').forEach((form) => {
+        const quantityInput = form.querySelector('[data-order-quantity]');
+        const totalNode = form.querySelector('[data-order-total]');
+        const price = Number.parseFloat(form.dataset.price || '0');
+
+        const updateTotal = () => {
+            const quantity = Math.max(1, Number.parseInt(quantityInput.value || '1', 10));
+            quantityInput.value = quantity;
+            totalNode.textContent = `${(price * quantity).toFixed(2)} ₽`;
+        };
+
+        if (quantityInput && totalNode) {
+            quantityInput.addEventListener('input', updateTotal);
+            quantityInput.addEventListener('change', updateTotal);
+            updateTotal();
+        }
+    });
 });
 
 function clearHints(form) {

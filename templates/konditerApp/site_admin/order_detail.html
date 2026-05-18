@@ -1,0 +1,37 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Заказ #{{ order.pk }}{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Админ-панель</p>
+        <h1>Заказ #{{ order.pk }}</h1>
+        <p class="muted">{{ order.user.username }} · {{ order.created_at|date:'d.m.Y H:i' }}</p>
+    </div>
+    <a class="button secondary" href="{% url 'site_admin_orders' %}">К списку заказов</a>
+</section>
+{% include 'konditerApp/includes/admin_nav.html' %}
+
+<section class="panel">
+    <h2>Состав заказа</h2>
+    {% include 'konditerApp/includes/order_items_table.html' %}
+    {% if order.customer_comment %}
+        <p class="muted">Комментарий клиента: {{ order.customer_comment }}</p>
+    {% endif %}
+</section>
+
+<section class="panel">
+    <h2>Статус</h2>
+    <form method="post" action="{% url 'site_admin_order_update' order.pk %}" class="row-form">
+        {% csrf_token %}
+        <select name="status">
+            {% for value, label in statuses %}
+                <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <input type="text" name="admin_comment" value="{{ order.admin_comment }}" placeholder="Комментарий администратора">
+        <button type="submit">Сохранить</button>
+    </form>
+</section>
+{% endblock %}
