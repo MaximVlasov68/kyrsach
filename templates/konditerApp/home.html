@@ -1,0 +1,57 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Кондитерская фабрика{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="hero-copy">
+        <p class="eyebrow">Свежая выпечка, торты и оптовые поставки</p>
+        <h1>Кондитерская фабрика для покупателей и партнеров</h1>
+        <p>Каталог продукции, заявки, документы и личный кабинет в одном аккуратном веб-приложении.</p>
+        <div class="actions">
+            <a class="button" href="{% url 'catalog' %}">Смотреть каталог</a>
+            <a class="button secondary" href="{% url 'request_create' %}">Оставить заявку</a>
+        </div>
+    </div>
+    <div class="hero-panel">
+        <strong>Сегодня в фокусе</strong>
+        <span>Торты, пирожные, печенье и индивидуальные заказы</span>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section-head">
+        <h2>Категории</h2>
+        <a href="{% url 'catalog' %}">Все товары</a>
+    </div>
+    <div class="chip-list">
+        {% for category in categories %}
+            <a class="chip" href="{% url 'catalog' %}?category={{ category.slug }}">{{ category.name }}</a>
+        {% empty %}
+            <p class="muted">Категории появятся после заполнения каталога.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="section">
+    <div class="section-head">
+        <h2>Популярные товары</h2>
+        <a href="{% url 'catalog' %}">Перейти в каталог</a>
+    </div>
+    <div class="product-grid">
+        {% for product in featured_products %}
+            <article class="product-card">
+                <span class="tag">{{ product.category.name }}</span>
+                <h3><a href="{{ product.get_absolute_url }}">{{ product.name }}</a></h3>
+                <p>{{ product.description|truncatechars:110 }}</p>
+                <div class="card-meta">
+                    <strong>{{ product.price }} ₽</strong>
+                    <span>{{ product.get_stock_status_display }}</span>
+                </div>
+            </article>
+        {% empty %}
+            <p class="muted">Отметьте товары как "На главной" в админ-панели.</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+<section class="form-page">
+    <div>
+        <p class="eyebrow">Аккаунт</p>
+        <h1>Регистрация покупателя</h1>
+        <p class="muted">После регистрации вы получите личный кабинет для заявок и документов.</p>
+    </div>
+    <form method="post" class="form-card" data-validate-form>
+        {% include 'konditerApp/includes/form_fields.html' %}
+        <button type="submit">Создать аккаунт</button>
+    </form>
+</section>
+{% endblock %}

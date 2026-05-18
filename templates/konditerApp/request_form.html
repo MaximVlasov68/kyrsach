@@ -1,0 +1,17 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Новая заявка{% endblock %}
+
+{% block content %}
+<section class="form-page">
+    <div>
+        <p class="eyebrow">Обращение</p>
+        <h1>Оставить заявку</h1>
+        <p class="muted">Опишите заказ или вопрос. После отправки заявка появится в личном кабинете.</p>
+    </div>
+    <form method="post" class="form-card" data-validate-form>
+        {% include 'konditerApp/includes/form_fields.html' %}
+        <button type="submit">Отправить</button>
+    </form>
+</section>
+{% endblock %}

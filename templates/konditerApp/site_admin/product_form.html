@@ -1,0 +1,17 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="form-page">
+    <div>
+        <p class="eyebrow">Админ-панель</p>
+        <h1>{{ title }}</h1>
+    </div>
+    <form method="post" class="form-card" data-validate-form>
+        {% include 'konditerApp/includes/form_fields.html' %}
+        <button type="submit">Сохранить</button>
+        <a href="{% url 'site_admin_catalog' %}">Назад к каталогу</a>
+    </form>
+</section>
+{% endblock %}

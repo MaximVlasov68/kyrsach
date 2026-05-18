@@ -1,0 +1,42 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Админ-панель{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Админ-панель</p>
+        <h1>Управление фабрикой</h1>
+    </div>
+</section>
+{% include 'konditerApp/includes/admin_nav.html' %}
+
+<section class="stats-grid">
+    <article class="stat"><span>Пользователи</span><strong>{{ stats.users_count }}</strong></article>
+    <article class="stat"><span>Товары</span><strong>{{ stats.products_count }}</strong></article>
+    <article class="stat"><span>Новые заявки</span><strong>{{ stats.requests_new }}</strong></article>
+    <article class="stat"><span>Документы</span><strong>{{ stats.documents_count }}</strong></article>
+</section>
+
+<section class="panel">
+    <h2>Последние заявки</h2>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>ID</th><th>Клиент</th><th>Тип</th><th>Статус</th><th>Дата</th></tr></thead>
+            <tbody>
+                {% for item in recent_requests %}
+                    <tr>
+                        <td>{{ item.id }}</td>
+                        <td>{{ item.name }}</td>
+                        <td>{{ item.get_request_type_display }}</td>
+                        <td>{{ item.get_status_display }}</td>
+                        <td>{{ item.created_at|date:'d.m.Y H:i' }}</td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5">Заявок пока нет.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

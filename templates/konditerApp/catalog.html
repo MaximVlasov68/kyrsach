@@ -1,0 +1,55 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Каталог{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Каталог</p>
+        <h1>Продукция фабрики</h1>
+    </div>
+</section>
+
+<form class="filters" method="get" data-validate-form>
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Название, состав, категория">
+    <select name="category">
+        <option value="">Все категории</option>
+        {% for category in categories %}
+            <option value="{{ category.slug }}" {% if filters.category == category.slug %}selected{% endif %}>{{ category.name }}</option>
+        {% endfor %}
+    </select>
+    <select name="stock">
+        <option value="">Любое наличие</option>
+        {% for value, label in stock_choices %}
+            <option value="{{ value }}" {% if filters.stock == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <select name="sort">
+        <option value="name" {% if filters.sort == 'name' %}selected{% endif %}>По названию</option>
+        <option value="price_asc" {% if filters.sort == 'price_asc' %}selected{% endif %}>Сначала дешевле</option>
+        <option value="price_desc" {% if filters.sort == 'price_desc' %}selected{% endif %}>Сначала дороже</option>
+        <option value="new" {% if filters.sort == 'new' %}selected{% endif %}>Новые</option>
+    </select>
+    <button type="submit">Применить</button>
+    <a class="button secondary" href="{% url 'catalog' %}">Сбросить</a>
+</form>
+
+<section class="product-grid">
+    {% for product in products %}
+        <article class="product-card">
+            <span class="tag">{{ product.category.name }}</span>
+            <h2><a href="{{ product.get_absolute_url }}">{{ product.name }}</a></h2>
+            <p>{{ product.description|truncatechars:140 }}</p>
+            <div class="card-meta">
+                <strong>{{ product.price }} ₽</strong>
+                <span>{{ product.weight_grams }} г</span>
+            </div>
+            <a class="button small" href="{% url 'request_create' %}?product={{ product.slug }}">Заказать</a>
+        </article>
+    {% empty %}
+        <p class="muted">По выбранным фильтрам ничего не найдено.</p>
+    {% endfor %}
+</section>
+
+{% include 'konditerApp/includes/pagination.html' with page_obj=products %}
+{% endblock %}

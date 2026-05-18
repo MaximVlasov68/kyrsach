@@ -1,0 +1,16 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Профиль{% endblock %}
+
+{% block content %}
+<section class="form-page">
+    <div>
+        <p class="eyebrow">Кабинет</p>
+        <h1>Профиль</h1>
+    </div>
+    <form method="post" class="form-card" data-validate-form>
+        {% include 'konditerApp/includes/form_fields.html' %}
+        <button type="submit">Сохранить</button>
+    </form>
+</section>
+{% endblock %}

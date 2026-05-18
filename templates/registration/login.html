@@ -1,0 +1,18 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Вход{% endblock %}
+
+{% block content %}
+<section class="form-page narrow">
+    <div>
+        <p class="eyebrow">Аккаунт</p>
+        <h1>Вход</h1>
+        <p class="muted">Войдите, чтобы видеть свои заявки и документы.</p>
+    </div>
+    <form method="post" class="form-card" data-validate-form>
+        {% include 'konditerApp/includes/form_fields.html' %}
+        <button type="submit">Войти</button>
+        <a href="{% url 'password_reset' %}">Забыли пароль?</a>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block content %}
+<section class="detail-layout">
+    <article class="detail-main">
+        <span class="tag">{{ product.category.name }}</span>
+        <h1>{{ product.name }}</h1>
+        <p>{{ product.description }}</p>
+        {% if product.ingredients %}
+            <h2>Состав</h2>
+            <p>{{ product.ingredients }}</p>
+        {% endif %}
+    </article>
+    <aside class="side-panel">
+        <dl class="facts">
+            <div><dt>Цена</dt><dd>{{ product.price }} ₽</dd></div>
+            <div><dt>Вес</dt><dd>{{ product.weight_grams }} г</dd></div>
+            <div><dt>Наличие</dt><dd>{{ product.get_stock_status_display }}</dd></div>
+        </dl>
+        <a class="button full" href="{% url 'request_create' %}?product={{ product.slug }}">Оставить заявку</a>
+    </aside>
+</section>
+{% endblock %}

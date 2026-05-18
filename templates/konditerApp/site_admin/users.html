@@ -1,0 +1,48 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Пользователи{% endblock %}
+
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Админ-панель</p><h1>Пользователи</h1></div></section>
+{% include 'konditerApp/includes/admin_nav.html' %}
+
+<form class="filters" method="get">
+    <input type="search" name="q" value="{{ query }}" placeholder="Имя, логин или email">
+    <select name="role">
+        <option value="">Все роли</option>
+        {% for value, label in roles %}
+            <option value="{{ value }}" {% if role == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Фильтр</button>
+</form>
+
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>Пользователь</th><th>Email</th><th>Роль</th><th>Активен</th><th></th></tr></thead>
+        <tbody>
+            {% for item in users %}
+                <tr>
+                    <td>{{ item.username }}</td>
+                    <td>{{ item.email }}</td>
+                    <td colspan="3">
+                        <form method="post" action="{% url 'site_admin_user_update' item.pk %}" class="row-form">
+                            {% csrf_token %}
+                            <select name="role">
+                                {% for value, label in roles %}
+                                    <option value="{{ value }}" {% if item.profile.role == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <label class="check"><input type="checkbox" name="is_active" {% if item.is_active %}checked{% endif %}> Активен</label>
+                            <button type="submit">Сохранить</button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">Пользователи не найдены.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include 'konditerApp/includes/pagination.html' with page_obj=users %}
+{% endblock %}

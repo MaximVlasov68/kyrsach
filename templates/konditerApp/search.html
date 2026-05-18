@@ -1,0 +1,52 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Поиск{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Поиск</p>
+        <h1>Результаты</h1>
+    </div>
+</section>
+
+<form class="filters" method="get" data-validate-form>
+    <input type="search" name="q" value="{{ query }}" placeholder="Введите запрос">
+    <button type="submit">Найти</button>
+</form>
+
+{% if not query %}
+    <p class="muted">Введите запрос, чтобы найти товары и доступные данные.</p>
+{% else %}
+    <section class="section">
+        <h2>Товары</h2>
+        <div class="product-grid">
+            {% for product in products %}
+                <article class="product-card">
+                    <span class="tag">{{ product.category.name }}</span>
+                    <h3><a href="{{ product.get_absolute_url }}">{{ product.name }}</a></h3>
+                    <p>{{ product.description|truncatechars:120 }}</p>
+                </article>
+            {% empty %}
+                <p class="muted">Товары не найдены.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if requests %}
+        <section class="section">
+            <h2>Заявки</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>ID</th><th>Клиент</th><th>Email</th><th>Статус</th></tr></thead>
+                    <tbody>
+                        {% for item in requests %}
+                            <tr><td>{{ item.id }}</td><td>{{ item.name }}</td><td>{{ item.email }}</td><td>{{ item.get_status_display }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+{% endif %}
+{% endblock %}

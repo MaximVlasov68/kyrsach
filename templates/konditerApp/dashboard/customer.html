@@ -1,0 +1,50 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Личный кабинет{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Личный кабинет</p>
+        <h1>{{ user.first_name|default:user.username }}</h1>
+        <p class="muted">{{ profile.get_role_display }}{% if profile.company %}, {{ profile.company }}{% endif %}</p>
+    </div>
+    <div class="actions">
+        <a class="button secondary" href="{% url 'profile_edit' %}">Профиль</a>
+        <a class="button" href="{% url 'document_upload' %}">Загрузить документ</a>
+    </div>
+</section>
+
+<section class="dashboard-grid">
+    <article class="panel">
+        <h2>Мои заявки</h2>
+        {% for item in requests %}
+            <div class="list-row">
+                <div>
+                    <strong>{{ item.get_request_type_display }}</strong>
+                    <span>{{ item.created_at|date:'d.m.Y H:i' }}</span>
+                </div>
+                <span class="status">{{ item.get_status_display }}</span>
+            </div>
+        {% empty %}
+            <p class="muted">Заявок пока нет.</p>
+        {% endfor %}
+        <a href="{% url 'request_create' %}">Создать заявку</a>
+    </article>
+
+    <article class="panel">
+        <h2>Документы</h2>
+        {% for document in documents %}
+            <div class="list-row">
+                <div>
+                    <strong>{{ document.title }}</strong>
+                    <span>{{ document.original_name }}</span>
+                </div>
+                <a href="{% url 'document_download' document.pk %}">Скачать</a>
+            </div>
+        {% empty %}
+            <p class="muted">Документы пока не загружены.</p>
+        {% endfor %}
+    </article>
+</section>
+{% endblock %}
