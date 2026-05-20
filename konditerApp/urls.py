@@ -6,9 +6,12 @@ from .forms import LoginForm
 
 urlpatterns = [
     path('', views.home, name='home'),
+    path('reviews/', views.reviews_page, name='reviews'),
     path('catalog/', views.catalog, name='catalog'),
     path('catalog/<slug:slug>/', views.product_detail, name='product_detail'),
     path('catalog/<slug:slug>/order/', views.order_create, name='order_create'),
+    path('reviews/new/', views.review_create, name='review_create'),
+    path('reviews/orders/<int:order_pk>/new/', views.review_create, name='order_review_create'),
     path('search/', views.search, name='search'),
     path('requests/new/', views.request_create, name='request_create'),
     path('documents/upload/', views.document_upload, name='document_upload'),
@@ -32,6 +35,8 @@ urlpatterns = [
     path('site-admin/catalog/categories/new/', views.site_admin_category_create, name='site_admin_category_create'),
     path('site-admin/requests/', views.site_admin_requests, name='site_admin_requests'),
     path('site-admin/requests/<int:pk>/update/', views.site_admin_request_update, name='site_admin_request_update'),
+    path('site-admin/reviews/', views.site_admin_reviews, name='site_admin_reviews'),
+    path('site-admin/reviews/<int:pk>/update/', views.site_admin_review_update, name='site_admin_review_update'),
     path('site-admin/orders/', views.site_admin_orders, name='site_admin_orders'),
     path('site-admin/orders/<int:pk>/', views.site_admin_order_detail, name='site_admin_order_detail'),
     path('site-admin/orders/<int:pk>/update/', views.site_admin_order_update, name='site_admin_order_update'),

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420" role="img" aria-label="Изображение товара">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fbf2ea"/>
+      <stop offset="0.55" stop-color="#f3ddd8"/>
+      <stop offset="1" stop-color="#e5f4f2"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="420" fill="url(#bg)"/>
+  <circle cx="320" cy="184" r="86" fill="#fff" opacity="0.8"/>
+  <path d="M235 207h170v42c0 35-29 64-64 64h-42c-35 0-64-29-64-64v-42z" fill="#b7384a"/>
+  <path d="M251 207c20-36 43-53 69-53s49 17 69 53H251z" fill="#862838"/>
+  <path d="M287 154c0-24 15-43 33-43s33 19 33 43" fill="none" stroke="#d6952a" stroke-width="14" stroke-linecap="round"/>
+  <text x="320" y="355" text-anchor="middle" fill="#862838" font-family="Arial, sans-serif" font-size="28" font-weight="700">Фото товара</text>
+</svg>

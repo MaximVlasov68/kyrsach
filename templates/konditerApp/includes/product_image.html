@@ -1,0 +1,6 @@
+{% load static %}
+{% if product.image %}
+    <img class="{{ class_name|default:'product-image' }}" src="{{ product.image.url }}" alt="{{ product.name }}" onerror="this.onerror=null;this.src='{% static 'konditerApp/img/product-fallback.svg' %}';">
+{% else %}
+    <img class="{{ class_name|default:'product-image' }}" src="{% static 'konditerApp/img/product-fallback.svg' %}" alt="{{ product.category.name|default:'Товар' }}">
+{% endif %}

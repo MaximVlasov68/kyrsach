@@ -16,12 +16,13 @@
     <article class="stat"><span>Товары</span><strong>{{ stats.products_count }}</strong></article>
     <article class="stat"><span>Заказы</span><strong>{{ stats.orders_count }}</strong></article>
     <article class="stat"><span>Новые заявки</span><strong>{{ stats.requests_new }}</strong></article>
+    <article class="stat"><span>Отзывы на модерации</span><strong>{{ stats.reviews_pending }}</strong></article>
 </section>
 
 <section class="panel">
     <h2>Последние заказы</h2>
-    <div class="table-wrap">
-        <table>
+    <div class="table-wrap admin-table-wrap">
+        <table class="admin-table">
             <thead><tr><th>ID</th><th>Клиент</th><th>Состав</th><th>Итого</th><th>Статус</th></tr></thead>
             <tbody>
                 {% for order in recent_orders %}
@@ -46,8 +47,8 @@
 
 <section class="panel">
     <h2>Последние заявки</h2>
-    <div class="table-wrap">
-        <table>
+    <div class="table-wrap admin-table-wrap">
+        <table class="admin-table">
             <thead><tr><th>ID</th><th>Клиент</th><th>Тип</th><th>Состав</th><th>Статус</th><th>Дата</th></tr></thead>
             <tbody>
                 {% for item in recent_requests %}
@@ -57,7 +58,10 @@
                         <td>{{ item.get_request_type_display }}</td>
                         <td>
                             {% for request_item in item.items.all %}
-                                <div>{{ request_item.product.name }} x {{ request_item.quantity }} — {{ request_item.subtotal }} ₽</div>
+                                <div class="request-item compact">
+                                    {% include 'konditerApp/includes/product_image.html' with product=request_item.product class_name='product-thumb' %}
+                                    <span>{{ request_item.product.name }} x {{ request_item.quantity }} — {{ request_item.subtotal }} ₽</span>
+                                </div>
                             {% empty %}
                                 <span class="muted">Состав заказа не указан.</span>
                             {% endfor %}

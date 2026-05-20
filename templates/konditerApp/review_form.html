@@ -1,0 +1,33 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Оставить отзыв{% endblock %}
+
+{% block content %}
+<section class="form-page narrow">
+    <div>
+        <p class="eyebrow">Отзывы</p>
+        <h1>Оставить отзыв</h1>
+        {% if order %}
+            <p class="muted">Заказ #{{ order.pk }} от {{ order.created_at|date:'d.m.Y H:i' }}</p>
+        {% else %}
+            <p class="muted">Расскажите, как прошел заказ или покупка.</p>
+        {% endif %}
+    </div>
+
+    <form class="form-card" method="post" data-validate-form>
+        {% csrf_token %}
+        {% for field in form %}
+            <label class="form-field">
+                <span>{{ field.label }}</span>
+                {{ field }}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+                {% for error in field.errors %}
+                    <small class="error">{{ error }}</small>
+                {% endfor %}
+            </label>
+        {% endfor %}
+        <button type="submit">Отправить на модерацию</button>
+        <a href="{% url 'reviews' %}">К отзывам</a>
+    </form>
+</section>
+{% endblock %}

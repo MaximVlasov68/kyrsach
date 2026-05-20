@@ -17,8 +17,8 @@
     <button type="submit">Фильтр</button>
 </form>
 
-<div class="table-wrap">
-    <table>
+<div class="table-wrap admin-table-wrap requests-table-wrap">
+    <table class="admin-table requests-table">
         <thead>
             <tr>
                 <th>Заявка</th>
@@ -41,25 +41,31 @@
                             <br><span class="muted">{{ item.user.username }}</span>
                         {% endif %}
                     </td>
-                    <td>{{ item.email }}<br>{{ item.phone }}</td>
                     <td>
-                        <table class="nested-table">
-                            <thead><tr><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead>
-                            <tbody>
-                                {% for request_item in item.items.all %}
-                                    <tr>
-                                        <td>{{ request_item.product.name }}{% if request_item.product.sku %}<br><span class="muted">{{ request_item.product.sku }}</span>{% endif %}</td>
-                                        <td>{{ request_item.quantity }}</td>
-                                        <td>{{ request_item.price }} ₽</td>
-                                        <td>{{ request_item.subtotal }} ₽</td>
-                                    </tr>
-                                {% empty %}
-                                    <tr><td colspan="4">Состав заказа не указан.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                        {{ item.email }}<br>
+                        <span class="muted">{{ item.phone|default:'телефон не указан' }}</span>
                     </td>
-                    <td>{{ item.message|truncatechars:80 }}</td>
+                    <td>
+                        <div class="request-items">
+                            {% for request_item in item.items.all %}
+                                <div class="request-item">
+                                    <div>
+                                        <strong>{{ request_item.product.name }}</strong>
+                                        {% if request_item.product.sku %}<span class="muted">{{ request_item.product.sku }}</span>{% endif %}
+                                        <span>{{ request_item.quantity }} шт. x {{ request_item.price }} ₽ = {{ request_item.subtotal }} ₽</span>
+                                    </div>
+                                </div>
+                            {% empty %}
+                                <span class="muted">Состав заказа не указан.</span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>
+                        {{ item.message }}
+                        {% if item.admin_comment %}
+                            <br><span class="muted">Комментарий админа: {{ item.admin_comment }}</span>
+                        {% endif %}
+                    </td>
                     <td><strong>{{ item.total_price }} ₽</strong></td>
                     <td>
                         <form method="post" action="{% url 'site_admin_request_update' item.pk %}" class="row-form vertical">

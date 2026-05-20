@@ -5,11 +5,7 @@
 {% block content %}
 <section class="detail-layout">
     <article class="detail-main">
-        {% if product.image %}
-            <img class="detail-image" src="{{ product.image.url }}" alt="{{ product.name }}">
-        {% else %}
-            <div class="detail-image product-image placeholder">{{ product.category.name }}</div>
-        {% endif %}
+        {% include 'konditerApp/includes/product_image.html' with product=product class_name='detail-image' %}
         <span class="tag">{{ product.category.name }}</span>
         {% if product.sku %}<span class="sku">{{ product.sku }}</span>{% endif %}
         <h1>{{ product.name }}</h1>

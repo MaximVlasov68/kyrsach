@@ -33,6 +33,9 @@
                     {% endfor %}
                 </ul>
                 <div class="card-meta"><span>Итого</span><strong>{{ order.total_price }} ₽</strong></div>
+                {% if order.can_receive_review %}
+                    <a class="button small secondary" href="{% url 'order_review_create' order.pk %}">Оставить отзыв</a>
+                {% endif %}
             </div>
         {% empty %}
             <p class="muted">Заказов пока нет.</p>
@@ -52,7 +55,10 @@
                 </div>
                 <ul class="order-items">
                     {% for request_item in item.items.all %}
-                        <li>{{ request_item.product.name }} x {{ request_item.quantity }} — {{ request_item.subtotal }} ₽</li>
+                        <li class="request-item compact">
+                            {% include 'konditerApp/includes/product_image.html' with product=request_item.product class_name='product-thumb' %}
+                            <span>{{ request_item.product.name }} x {{ request_item.quantity }} — {{ request_item.subtotal }} ₽</span>
+                        </li>
                     {% empty %}
                         <li>Состав заказа не указан.</li>
                     {% endfor %}

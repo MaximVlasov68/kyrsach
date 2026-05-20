@@ -88,3 +88,24 @@ def validate_product_image_mime(file_obj):
     content_type = getattr(file_obj, 'content_type', '')
     if content_type and content_type not in ALLOWED_PRODUCT_IMAGE_MIME_TYPES:
         raise ValidationError('Тип изображения не соответствует разрешенным форматам.')
+
+
+REVIEW_BLOCKED_WORDS = {
+    'дурак',
+    'идиот',
+}
+
+
+def validate_review_text(value):
+    value = normalize_text(value)
+    if len(value) < 10:
+        raise ValidationError('Отзыв должен быть не короче 10 символов.')
+    if len(value) > 1000:
+        raise ValidationError('Отзыв должен быть не длиннее 1000 символов.')
+    if any(symbol in value for symbol in ['<', '>', '{', '}']):
+        raise ValidationError('Отзыв содержит недопустимые символы.')
+
+    lowered = value.lower()
+    blocked = [word for word in REVIEW_BLOCKED_WORDS if word in lowered]
+    if blocked:
+        raise ValidationError('Отзыв содержит грубые или неэтичные слова.')

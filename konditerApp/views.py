@@ -17,8 +17,9 @@ from .forms import (
     ProductForm,
     ProfileForm,
     RegistrationForm,
+    ReviewForm,
 )
-from .models import CustomerRequest, CustomerRequestItem, Order, OrderItem, Product, ProductCategory, UploadedDocument, UserProfile
+from .models import CustomerRequest, CustomerRequestItem, Order, OrderItem, Product, ProductCategory, Review, UploadedDocument, UserProfile
 from .services import send_registration_email, send_request_created_email
 
 
@@ -45,6 +46,8 @@ def home(request):
     featured_products = Product.objects.filter(is_active=True, is_featured=True).select_related('category')[:6]
     categories = ProductCategory.objects.filter(is_active=True)[:8]
     request_form = CustomerRequestForm(user=request.user)
+    reviews = Review.objects.filter(status=Review.Status.APPROVED).select_related('user')[:6]
+    review_form = ReviewForm() if request.user.is_authenticated else None
     return render(
         request,
         'konditerApp/home.html',
@@ -52,8 +55,43 @@ def home(request):
             'featured_products': featured_products,
             'categories': categories,
             'request_form': request_form,
+            'reviews': reviews,
+            'review_form': review_form,
         },
     )
+
+
+@login_required
+def review_create(request, order_pk=None):
+    order = None
+    if order_pk is not None:
+        order = get_object_or_404(Order.objects.select_related('user'), pk=order_pk, user=request.user)
+        if order.status != Order.Status.DONE:
+            messages.error(request, 'Отзыв можно оставить только после завершения заказа.')
+            return redirect('dashboard')
+        if hasattr(order, 'review'):
+            messages.error(request, 'Для этого заказа отзыв уже отправлен.')
+            return redirect('dashboard')
+
+    if request.method == 'POST':
+        form = ReviewForm(request.POST)
+        if form.is_valid():
+            review = form.save(commit=False)
+            review.user = request.user
+            review.order = order
+            review.status = Review.Status.PENDING
+            review.save()
+            messages.success(request, 'Спасибо! Ваш отзыв отправлен на модерацию.')
+            return redirect('reviews')
+    else:
+        form = ReviewForm()
+
+    return render(request, 'konditerApp/review_form.html', {'form': form, 'order': order})
+
+
+def reviews_page(request):
+    reviews = Review.objects.filter(status=Review.Status.APPROVED).select_related('user', 'order')
+    return render(request, 'konditerApp/reviews.html', {'reviews': paginate(request, reviews, 9)})
 
 
 def catalog(request):
@@ -202,7 +240,7 @@ def dashboard(request):
         return redirect('site_admin_dashboard')
     profile = get_profile(request.user)
     requests = CustomerRequest.objects.filter(user=request.user).select_related('product').prefetch_related('items__product')[:5]
-    orders = Order.objects.filter(user=request.user).prefetch_related('items__product')[:5]
+    orders = Order.objects.filter(user=request.user).select_related('review').prefetch_related('items__product')[:5]
     documents = UploadedDocument.objects.filter(user=request.user)[:5]
     return render(
         request,
@@ -285,6 +323,7 @@ def site_admin_dashboard(request):
         'orders_count': Order.objects.count(),
         'requests_new': CustomerRequest.objects.filter(status=CustomerRequest.Status.NEW).count(),
         'documents_count': UploadedDocument.objects.count(),
+        'reviews_pending': Review.objects.filter(status=Review.Status.PENDING).count(),
     }
     recent_requests = CustomerRequest.objects.select_related('user', 'product').prefetch_related('items__product')[:8]
     recent_orders = Order.objects.select_related('user').prefetch_related('items__product')[:8]
@@ -400,6 +439,27 @@ def site_admin_requests(request):
 
 
 @user_passes_test(is_site_admin)
+def site_admin_reviews(request):
+    status = request.GET.get('status', '').strip()
+    query = request.GET.get('q', '').strip()
+    reviews = Review.objects.select_related('user')
+    if status:
+        reviews = reviews.filter(status=status)
+    if query:
+        reviews = reviews.filter(Q(user__username__icontains=query) | Q(user__email__icontains=query) | Q(text__icontains=query))
+    return render(
+        request,
+        'konditerApp/site_admin/reviews.html',
+        {
+            'reviews': paginate(request, reviews),
+            'status': status,
+            'query': query,
+            'statuses': Review.Status.choices,
+        },
+    )
+
+
+@user_passes_test(is_site_admin)
 def site_admin_orders(request):
     status = request.GET.get('status', '').strip()
     query = request.GET.get('q', '').strip()
@@ -458,6 +518,19 @@ def site_admin_request_update(request, pk):
         customer_request.save(update_fields=['status', 'admin_comment', 'updated_at'])
         messages.success(request, 'Заявка обновлена.')
     return redirect('site_admin_requests')
+
+
+@user_passes_test(is_site_admin)
+@require_POST
+def site_admin_review_update(request, pk):
+    review = get_object_or_404(Review, pk=pk)
+    status = request.POST.get('status')
+    if status in Review.Status.values:
+        review.status = status
+        review.moderation_comment = request.POST.get('moderation_comment', '').strip()
+        review.save(update_fields=['status', 'moderation_comment'])
+        messages.success(request, 'Отзыв обновлен.')
+    return redirect('site_admin_reviews')
 
 
 @user_passes_test(is_site_admin)

@@ -3,7 +3,7 @@ from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
-from .models import CustomerRequest, Order, Product, ProductCategory, UploadedDocument, UserProfile
+from .models import CustomerRequest, Order, Product, ProductCategory, Review, UploadedDocument, UserProfile
 from .validators import (
     normalize_text,
     validate_document_extension,
@@ -11,6 +11,7 @@ from .validators import (
     validate_phone,
     validate_product_image_extension,
     validate_product_image_mime,
+    validate_review_text,
     validate_safe_name,
 )
 
@@ -220,6 +221,30 @@ class ProductOrderForm(forms.Form):
             raise ValidationError('Опишите обращение подробнее, минимум 10 символов.')
         if any(symbol in value for symbol in ['<', '>', '{', '}']):
             raise ValidationError('Сообщение содержит недопустимые символы.')
+        return value
+
+
+class ReviewForm(forms.ModelForm):
+    class Meta:
+        model = Review
+        fields = ['rating', 'text']
+        labels = {
+            'rating': 'Оценка',
+            'text': 'Текст отзыва',
+        }
+        widgets = {
+            'rating': forms.Select(choices=[(value, f'{value} из 5') for value in range(5, 0, -1)]),
+            'text': forms.Textarea(attrs={'rows': 4, 'maxlength': 1000}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
+
+    def clean_text(self):
+        value = normalize_text(self.cleaned_data['text'])
+        validate_review_text(value)
         return value
 
 

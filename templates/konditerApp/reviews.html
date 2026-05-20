@@ -1,0 +1,40 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Отзывы{% endblock %}
+
+{% block content %}
+<section class="page-head">
+    <div>
+        <p class="eyebrow">Отзывы</p>
+        <h1>Отзывы покупателей</h1>
+        <p class="muted">На странице опубликованы только отзывы, прошедшие модерацию.</p>
+    </div>
+    {% if user.is_authenticated %}
+        <a class="button" href="{% url 'review_create' %}">Оставить отзыв</a>
+    {% else %}
+        <a class="button secondary" href="{% url 'login' %}?next={% url 'review_create' %}">Войти, чтобы оставить отзыв</a>
+    {% endif %}
+</section>
+
+<section class="section">
+    <div class="reviews-list reviews-grid">
+        {% for review in reviews %}
+            <article class="review-card">
+                <div class="list-row">
+                    <strong>{{ review.user.get_full_name|default:review.user.username }}</strong>
+                    <span class="rating" aria-label="Оценка {{ review.rating }} из 5">{{ review.rating }}/5</span>
+                </div>
+                <p>{{ review.text }}</p>
+                <span class="muted">
+                    {{ review.created_at|date:'d.m.Y' }}
+                    {% if review.order %} · заказ #{{ review.order.pk }}{% endif %}
+                </span>
+            </article>
+        {% empty %}
+            <p class="muted">Опубликованных отзывов пока нет.</p>
+        {% endfor %}
+    </div>
+</section>
+
+{% include 'konditerApp/includes/pagination.html' with page_obj=reviews %}
+{% endblock %}

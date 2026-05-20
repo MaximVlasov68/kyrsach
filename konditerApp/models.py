@@ -4,7 +4,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.validators import FileExtensionValidator, MinValueValidator
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
 
@@ -13,6 +13,7 @@ from .validators import (
     ALLOWED_PRODUCT_IMAGE_EXTENSIONS,
     validate_document_extension,
     validate_product_image_extension,
+    validate_review_text,
 )
 
 
@@ -112,6 +113,40 @@ class Product(models.Model):
 
     def get_absolute_url(self):
         return reverse('product_detail', kwargs={'slug': self.slug})
+
+
+class Review(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'На модерации'
+        APPROVED = 'approved', 'Опубликован'
+        REJECTED = 'rejected', 'Отклонен'
+        HIDDEN = 'hidden', 'Скрыт'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+    )
+    order = models.OneToOneField(
+        'Order',
+        on_delete=models.SET_NULL,
+        related_name='review',
+        null=True,
+        blank=True,
+    )
+    text = models.TextField(validators=[validate_review_text])
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    moderation_comment = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'отзыв'
+        verbose_name_plural = 'отзывы'
+
+    def __str__(self):
+        return f'Отзыв {self.user} ({self.rating}/5)'
 
 
 class CustomerRequest(models.Model):
@@ -221,6 +256,10 @@ class Order(models.Model):
 
     def items_summary(self):
         return ', '.join(f'{item.product.name} x {item.quantity}' for item in self.items.select_related('product'))
+
+    @property
+    def can_receive_review(self):
+        return self.status == self.Status.DONE and not hasattr(self, 'review')
 
 
 class OrderItem(models.Model):

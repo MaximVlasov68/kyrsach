@@ -1,6 +1,7 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
-from .models import CustomerRequest, CustomerRequestItem, Order, OrderItem, Product, ProductCategory, UploadedDocument, UserProfile
+from .models import CustomerRequest, CustomerRequestItem, Order, OrderItem, Product, ProductCategory, Review, UploadedDocument, UserProfile
 
 
 @admin.register(UserProfile)
@@ -20,10 +21,42 @@ class ProductCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'sku', 'category', 'price', 'weight_grams', 'stock_status', 'is_active', 'is_featured')
+    list_display = ('image_preview', 'name', 'sku', 'category', 'price', 'weight_grams', 'stock_status', 'is_active', 'is_featured')
     list_filter = ('category', 'stock_status', 'is_active', 'is_featured')
     prepopulated_fields = {'slug': ('name',)}
     search_fields = ('name', 'sku', 'description', 'ingredients')
+    readonly_fields = ('image_preview',)
+
+    @admin.display(description='Фото')
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="width:72px;height:48px;object-fit:cover;border-radius:6px;">', obj.image.url)
+        return 'Нет фото'
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ('user', 'rating', 'short_text', 'status', 'created_at')
+    list_filter = ('status', 'rating', 'created_at')
+    search_fields = ('user__username', 'user__email', 'text', 'moderation_comment')
+    readonly_fields = ('created_at',)
+    actions = ['approve_reviews', 'reject_reviews', 'hide_reviews']
+
+    @admin.display(description='Текст')
+    def short_text(self, obj):
+        return obj.text[:90] + ('...' if len(obj.text) > 90 else '')
+
+    @admin.action(description='Одобрить выбранные отзывы')
+    def approve_reviews(self, request, queryset):
+        queryset.update(status=Review.Status.APPROVED)
+
+    @admin.action(description='Отклонить выбранные отзывы')
+    def reject_reviews(self, request, queryset):
+        queryset.update(status=Review.Status.REJECTED)
+
+    @admin.action(description='Скрыть выбранные отзывы')
+    def hide_reviews(self, request, queryset):
+        queryset.update(status=Review.Status.HIDDEN)
 
 
 class CustomerRequestItemInline(admin.TabularInline):

@@ -1,0 +1,66 @@
+{% extends 'konditerApp/base.html' %}
+
+{% block title %}Отзывы{% endblock %}
+
+{% block content %}
+<section class="page-head"><div><p class="eyebrow">Админ-панель</p><h1>Отзывы</h1></div></section>
+{% include 'konditerApp/includes/admin_nav.html' %}
+
+<form class="filters admin-filters" method="get">
+    <input type="search" name="q" value="{{ query }}" placeholder="Автор, email или текст">
+    <select name="status">
+        <option value="">Все статусы</option>
+        {% for value, label in statuses %}
+            <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit">Фильтр</button>
+</form>
+
+<div class="table-wrap admin-table-wrap">
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Автор</th>
+                <th>Отзыв</th>
+                <th>Оценка</th>
+                <th>Дата</th>
+                <th>Статус</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for review in reviews %}
+                <tr>
+                    <td>
+                        {{ review.user.get_full_name|default:review.user.username }}<br>
+                        <span class="muted">{{ review.user.email|default:'email не указан' }}</span>
+                    </td>
+                    <td>
+                        {{ review.text }}
+                        {% if review.moderation_comment %}
+                            <br><span class="muted">Комментарий: {{ review.moderation_comment }}</span>
+                        {% endif %}
+                    </td>
+                    <td><strong>{{ review.rating }}/5</strong></td>
+                    <td>{{ review.created_at|date:'d.m.Y H:i' }}</td>
+                    <td>
+                        <form method="post" action="{% url 'site_admin_review_update' review.pk %}" class="row-form vertical">
+                            {% csrf_token %}
+                            <select name="status">
+                                {% for value, label in statuses %}
+                                    <option value="{{ value }}" {% if review.status == value %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                            <textarea name="moderation_comment" rows="3" placeholder="Причина отклонения или комментарий">{{ review.moderation_comment }}</textarea>
+                            <button type="submit">Сохранить</button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">Отзывы не найдены.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include 'konditerApp/includes/pagination.html' with page_obj=reviews %}
+{% endblock %}
