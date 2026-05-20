@@ -4,7 +4,7 @@ import re
 from django.core.exceptions import ValidationError
 
 
-SAFE_NAME_RE = re.compile(r"^[A-Za-zА-Яа-яЁё0-9\s\-'.]+$")
+SAFE_NAME_RE = re.compile(r"^[A-Za-zА-Яа-яЁё0-9\s\-'.\"«»]+$")
 SAFE_PHONE_RE = re.compile(r"^\+?[0-9\s\-()]{7,20}$")
 
 ALLOWED_DOCUMENT_EXTENSIONS = {
@@ -55,7 +55,7 @@ def validate_safe_name(value):
     value = normalize_text(value)
     validate_required_text(value, 'Значение')
     if not SAFE_NAME_RE.fullmatch(value):
-        raise ValidationError('Используйте буквы, цифры, пробелы, дефис, точку или апостроф.')
+        raise ValidationError('Используйте буквы, цифры, пробелы, дефис, точку, кавычки или апостроф.')
 
 
 def validate_phone(value):

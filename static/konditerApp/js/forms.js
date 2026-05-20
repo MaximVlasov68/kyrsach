@@ -38,23 +38,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 if (['username', 'first_name', 'last_name', 'name', 'title'].includes(field.name) && value) {
-                    const safeName = /^[A-Za-zА-Яа-яЁё0-9\s\-'.]+$/;
+                    const safeName = /^[A-Za-zА-Яа-яЁё0-9\s\-'.\"«»]+$/;
                     if (!safeName.test(value)) {
-                        showHint(field, 'Используйте буквы, цифры, пробелы, дефис, точку или апостроф.');
+                        showHint(field, 'Используйте буквы, цифры, пробелы, дефис, точку, кавычки или апостроф.');
                         isValid = false;
                     }
                 }
 
                 if (field.type === 'file' && field.files.length) {
-                    const allowed = ['doc', 'docx', 'pdf', 'xls', 'xlsx', 'odt', 'ods', 'txt', 'rtf', 'csv'];
+                    const allowed = (field.dataset.fileExtensions || 'doc,docx,pdf,xls,xlsx,odt,ods,txt,rtf,csv')
+                        .split(',')
+                        .map((extension) => extension.trim().toLowerCase())
+                        .filter(Boolean);
+                    const maxSize = Number.parseInt(field.dataset.maxSize || `${10 * 1024 * 1024}`, 10);
+                    const maxSizeLabel = field.dataset.maxSizeLabel || '10 МБ';
                     const file = field.files[0];
                     const extension = file.name.split('.').pop().toLowerCase();
                     if (!allowed.includes(extension)) {
                         showHint(field, `Разрешенные форматы: ${allowed.join(', ')}.`);
                         isValid = false;
                     }
-                    if (file.size > 10 * 1024 * 1024) {
-                        showHint(field, 'Размер файла не должен превышать 10 МБ.');
+                    if (file.size > maxSize) {
+                        showHint(field, `Размер файла не должен превышать ${maxSizeLabel}.`);
                         isValid = false;
                     }
                 }

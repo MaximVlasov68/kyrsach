@@ -1,9 +1,13 @@
+import shutil
+import tempfile
+from decimal import Decimal
+
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .forms import DocumentUploadForm
+from .forms import CategoryForm, DocumentUploadForm, ProductForm
 from .models import CustomerRequest, CustomerRequestItem, Order, OrderItem, Product, ProductCategory, Review, UserProfile
 
 
@@ -58,6 +62,164 @@ class UploadValidationTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn('file', form.errors)
+
+
+class ProductAdminFormTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._media_root = tempfile.mkdtemp()
+        cls._override_media = override_settings(MEDIA_ROOT=cls._media_root)
+        cls._override_media.enable()
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls._override_media.disable()
+        shutil.rmtree(cls._media_root, ignore_errors=True)
+
+    def setUp(self):
+        self.category = ProductCategory.objects.create(name='Торты', slug='cakes')
+
+    def product_data(self, **overrides):
+        data = {
+            'category': self.category.pk,
+            'sku': '',
+            'name': 'Торт Прага',
+            'slug': '',
+            'description': 'Шоколадный торт с кремом',
+            'ingredients': '',
+            'price': '1200.00',
+            'weight_grams': 900,
+            'stock_status': Product.StockStatus.AVAILABLE,
+            'is_active': 'on',
+            'is_featured': '',
+        }
+        data.update(overrides)
+        return data
+
+    def test_product_slug_is_generated_from_cyrillic_name(self):
+        form = ProductForm(data=self.product_data())
+
+        self.assertTrue(form.is_valid(), form.errors)
+        product = form.save()
+        self.assertEqual(product.slug, 'tort-praga')
+
+    def test_product_name_allows_quotes(self):
+        form = ProductForm(data=self.product_data(name='Торт "Прага"'))
+
+        self.assertTrue(form.is_valid(), form.errors)
+        product = form.save()
+        self.assertEqual(product.slug, 'tort-praga')
+
+    def test_product_stock_status_defaults_when_missing(self):
+        data = self.product_data()
+        data.pop('stock_status')
+        form = ProductForm(data=data)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        product = form.save()
+        self.assertEqual(product.stock_status, Product.StockStatus.AVAILABLE)
+
+    def test_product_price_accepts_comma_decimal_separator(self):
+        form = ProductForm(data=self.product_data(price='499,99'))
+
+        self.assertTrue(form.is_valid(), form.errors)
+        product = form.save()
+        self.assertEqual(product.price, Decimal('499.99'))
+
+    def test_product_image_field_has_image_validation_attrs(self):
+        form = ProductForm()
+        attrs = form.fields['image'].widget.attrs
+
+        self.assertIn('.jpg', attrs['accept'])
+        self.assertIn('jpg', attrs['data-file-extensions'])
+        self.assertEqual(attrs['data-max-size'], str(5 * 1024 * 1024))
+
+    def test_product_slug_gets_unique_suffix(self):
+        Product.objects.create(category=self.category, name='Торт Прага', description='Первый', price=1000)
+        form = ProductForm(data=self.product_data(sku='KND-NEW-001'))
+
+        self.assertTrue(form.is_valid(), form.errors)
+        product = form.save()
+        self.assertEqual(product.slug, 'tort-praga-2')
+
+    def test_manual_slug_is_optional_but_validated_when_present(self):
+        Product.objects.create(category=self.category, name='Торт Прага', slug='manual-slug', description='Первый', price=1000)
+        duplicate = ProductForm(data=self.product_data(name='Другой торт', slug='manual slug'))
+        unique = ProductForm(data=self.product_data(name='Другой торт', slug='новый торт'))
+
+        self.assertFalse(duplicate.is_valid())
+        self.assertIn('slug', duplicate.errors)
+        self.assertTrue(unique.is_valid(), unique.errors)
+        self.assertEqual(unique.save().slug, 'novyy-tort')
+
+    def test_product_can_be_created_without_image(self):
+        form = ProductForm(data=self.product_data())
+
+        self.assertTrue(form.is_valid(), form.errors)
+        product = form.save()
+        self.assertFalse(product.image)
+
+    def test_product_can_be_created_with_uploaded_image(self):
+        image = SimpleUploadedFile(
+            'cake.png',
+            b'\x89PNG\r\n\x1a\n',
+            content_type='image/png',
+        )
+        form = ProductForm(data=self.product_data(), files={'image': image})
+
+        self.assertTrue(form.is_valid(), form.errors)
+        product = form.save()
+        self.assertTrue(product.image.name.startswith('products/tort-praga/'))
+
+    def test_edit_without_new_image_keeps_existing_image_and_slug(self):
+        product = Product.objects.create(
+            category=self.category,
+            name='Торт Прага',
+            slug='old-praga',
+            image='catalog/placeholders/praga-cake.png',
+            description='Старое описание',
+            price=1000,
+        )
+        form = ProductForm(
+            data=self.product_data(name='Торт Прага обновленный', slug='', description='Новое описание'),
+            instance=product,
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        updated = form.save()
+        self.assertEqual(updated.slug, 'old-praga')
+        self.assertEqual(updated.image.name, 'catalog/placeholders/praga-cake.png')
+
+
+class CategoryAdminFormTests(TestCase):
+    def test_category_form_does_not_show_slug_field(self):
+        form = CategoryForm()
+
+        self.assertNotIn('slug', form.fields)
+
+    def test_category_slug_is_generated_from_name(self):
+        form = CategoryForm(data={'name': 'Пирожные', 'description': 'Порционные десерты', 'is_active': 'on'})
+
+        self.assertTrue(form.is_valid(), form.errors)
+        category = form.save()
+        self.assertEqual(category.slug, 'pirozhnye')
+
+    def test_category_slug_gets_unique_suffix(self):
+        ProductCategory.objects.create(name='Пирожные архив', slug='pirozhnye')
+        form = CategoryForm(data={'name': 'Пирожные', 'description': '', 'is_active': 'on'})
+
+        self.assertTrue(form.is_valid(), form.errors)
+        category = form.save()
+        self.assertEqual(category.slug, 'pirozhnye-2')
+
+    def test_existing_category_slug_is_not_changed(self):
+        category = ProductCategory.objects.create(name='Старое название', slug='old-category')
+        category.name = 'Новое название'
+        category.save()
+
+        self.assertEqual(category.slug, 'old-category')
 
 
 class OrderTests(TestCase):

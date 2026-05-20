@@ -7,6 +7,7 @@ from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
+from django.utils.text import slugify
 
 from .validators import (
     ALLOWED_DOCUMENT_EXTENSIONS,
@@ -26,7 +27,71 @@ def document_upload_path(instance, filename):
 def product_image_upload_path(instance, filename):
     extension = Path(filename).suffix.lower()
     slug = instance.slug or 'product'
-    return f'uploads/products/{slug}/{uuid.uuid4().hex}{extension}'
+    return f'products/{slug}/{uuid.uuid4().hex}{extension}'
+
+
+CYRILLIC_TRANSLIT = str.maketrans({
+    'а': 'a',
+    'б': 'b',
+    'в': 'v',
+    'г': 'g',
+    'д': 'd',
+    'е': 'e',
+    'ё': 'e',
+    'ж': 'zh',
+    'з': 'z',
+    'и': 'i',
+    'й': 'y',
+    'к': 'k',
+    'л': 'l',
+    'м': 'm',
+    'н': 'n',
+    'о': 'o',
+    'п': 'p',
+    'р': 'r',
+    'с': 's',
+    'т': 't',
+    'у': 'u',
+    'ф': 'f',
+    'х': 'h',
+    'ц': 'ts',
+    'ч': 'ch',
+    'ш': 'sh',
+    'щ': 'sch',
+    'ъ': '',
+    'ы': 'y',
+    'ь': '',
+    'э': 'e',
+    'ю': 'yu',
+    'я': 'ya',
+})
+
+
+def make_slug_source(value):
+    return (value or '').lower().translate(CYRILLIC_TRANSLIT)
+
+
+def build_unique_product_slug(name, instance_pk=None):
+    return build_unique_slug(name, Product.objects.all(), 180, 'product', instance_pk)
+
+
+def build_unique_category_slug(name, instance_pk=None):
+    return build_unique_slug(name, ProductCategory.objects.all(), 140, 'category', instance_pk)
+
+
+def build_unique_slug(name, queryset, max_length, fallback_prefix, instance_pk=None):
+    fallback = f'{fallback_prefix}-{uuid.uuid4().hex[:8]}'
+    base_slug = slugify(make_slug_source(name)) or fallback
+    base_slug = base_slug[:max_length - 10].strip('-') or fallback
+    slug = base_slug
+    suffix = 2
+    if instance_pk:
+        queryset = queryset.exclude(pk=instance_pk)
+    while queryset.filter(slug=slug).exists():
+        suffix_text = f'-{suffix}'
+        slug = f'{base_slug[:max_length - len(suffix_text)]}{suffix_text}'
+        suffix += 1
+    return slug
 
 
 class UserProfile(models.Model):
@@ -54,7 +119,7 @@ class UserProfile(models.Model):
 
 class ProductCategory(models.Model):
     name = models.CharField(max_length=120, unique=True)
-    slug = models.SlugField(max_length=140, unique=True)
+    slug = models.SlugField(max_length=140, unique=True, blank=True)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
 
@@ -65,6 +130,11 @@ class ProductCategory(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = build_unique_category_slug(self.name, self.pk)
+        super().save(*args, **kwargs)
 
 
 class Product(models.Model):
@@ -80,7 +150,7 @@ class Product(models.Model):
     )
     sku = models.CharField(max_length=40, unique=True, blank=True, null=True)
     name = models.CharField(max_length=160)
-    slug = models.SlugField(max_length=180, unique=True)
+    slug = models.SlugField(max_length=180, unique=True, blank=True)
     image = models.FileField(
         upload_to=product_image_upload_path,
         blank=True,
@@ -110,6 +180,11 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = build_unique_product_slug(self.name, self.pk)
+        super().save(*args, **kwargs)
 
     def get_absolute_url(self):
         return reverse('product_detail', kwargs={'slug': self.slug})

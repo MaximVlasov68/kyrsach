@@ -1,10 +1,15 @@
+from decimal import Decimal
+
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.utils.text import slugify
 
-from .models import CustomerRequest, Order, Product, ProductCategory, Review, UploadedDocument, UserProfile
+from .models import CustomerRequest, Order, Product, ProductCategory, Review, UploadedDocument, UserProfile, make_slug_source
 from .validators import (
+    ALLOWED_DOCUMENT_EXTENSIONS,
+    ALLOWED_PRODUCT_IMAGE_EXTENSIONS,
     normalize_text,
     validate_document_extension,
     validate_document_mime,
@@ -14,6 +19,13 @@ from .validators import (
     validate_review_text,
     validate_safe_name,
 )
+
+
+class CommaDecimalField(forms.DecimalField):
+    def to_python(self, value):
+        if isinstance(value, str):
+            value = value.replace(',', '.')
+        return super().to_python(value)
 
 
 class RegistrationForm(UserCreationForm):
@@ -263,6 +275,13 @@ class DocumentUploadForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields['request'].required = False
         self.fields['request'].queryset = CustomerRequest.objects.filter(user=self.user)
+        document_extensions = sorted(ALLOWED_DOCUMENT_EXTENSIONS)
+        self.fields['file'].widget.attrs.update({
+            'accept': ','.join(f'.{extension}' for extension in document_extensions),
+            'data-file-extensions': ','.join(document_extensions),
+            'data-max-size': str(10 * 1024 * 1024),
+            'data-max-size-label': '10 МБ',
+        })
         for field in self.fields.values():
             field.widget.attrs.setdefault('class', 'form-control')
 
@@ -295,10 +314,9 @@ class DocumentUploadForm(forms.ModelForm):
 class CategoryForm(forms.ModelForm):
     class Meta:
         model = ProductCategory
-        fields = ['name', 'slug', 'description', 'is_active']
+        fields = ['name', 'description', 'is_active']
         labels = {
             'name': 'Название',
-            'slug': 'URL-идентификатор',
             'description': 'Описание',
             'is_active': 'Активна',
         }
@@ -318,6 +336,9 @@ class CategoryForm(forms.ModelForm):
 
 
 class ProductForm(forms.ModelForm):
+    slug = forms.CharField(label='URL-идентификатор', max_length=180, required=False)
+    price = CommaDecimalField(label='Цена', max_digits=10, decimal_places=2, min_value=Decimal('0'))
+
     class Meta:
         model = Product
         fields = [
@@ -355,6 +376,21 @@ class ProductForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['slug'].required = False
+        self.fields['slug'].help_text = 'Можно оставить пустым: URL-идентификатор создастся автоматически из названия.'
+        self.fields['image'].required = False
+        self.fields['image'].help_text = 'JPG, JPEG, PNG или WEBP до 5 МБ. Если не выбрать новый файл при редактировании, старое фото сохранится.'
+        product_extensions = sorted(ALLOWED_PRODUCT_IMAGE_EXTENSIONS)
+        self.fields['image'].widget.attrs.update({
+            'accept': ','.join(f'.{extension}' for extension in product_extensions),
+            'data-file-extensions': ','.join(product_extensions),
+            'data-max-size': str(5 * 1024 * 1024),
+            'data-max-size-label': '5 МБ',
+        })
+        self.fields['stock_status'].required = False
+        self.fields['stock_status'].initial = (
+            self.instance.stock_status if self.instance and self.instance.pk else Product.StockStatus.AVAILABLE
+        )
         for field in self.fields.values():
             field.widget.attrs.setdefault('class', 'form-control')
 
@@ -369,9 +405,33 @@ class ProductForm(forms.ModelForm):
             raise ValidationError('SKU может содержать буквы, цифры, дефис и подчеркивание.')
         return value.upper() if value else None
 
+    def clean_slug(self):
+        value = normalize_text(self.cleaned_data.get('slug'))
+        if not value:
+            return self.instance.slug if self.instance and self.instance.pk else ''
+
+        slug = slugify(make_slug_source(value))
+        if not slug:
+            raise ValidationError('URL-идентификатор должен содержать буквы, цифры или дефисы.')
+
+        queryset = Product.objects.filter(slug=slug)
+        if self.instance and self.instance.pk:
+            queryset = queryset.exclude(pk=self.instance.pk)
+        if queryset.exists():
+            raise ValidationError('Товар с таким URL-идентификатором уже существует.')
+        return slug
+
+    def clean_stock_status(self):
+        value = self.cleaned_data.get('stock_status')
+        if value:
+            return value
+        if self.instance and self.instance.pk:
+            return self.instance.stock_status
+        return Product.StockStatus.AVAILABLE
+
     def clean_image(self):
         image = self.cleaned_data.get('image')
-        if image:
+        if image and getattr(image, 'content_type', None):
             validate_product_image_extension(image)
             validate_product_image_mime(image)
             if image.size > 5 * 1024 * 1024:
