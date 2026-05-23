@@ -42,6 +42,34 @@ def paginate(request, queryset, per_page=10):
     return paginator.get_page(request.GET.get('page'))
 
 
+def normalize_search_value(value):
+    value = (value or '').casefold().replace('ё', 'е')
+    for separator in ['-', '_', '"', "'", '«', '»', '.', ',', '/', '\\']:
+        value = value.replace(separator, ' ')
+    return ' '.join(value.split())
+
+
+def product_search_haystack(product):
+    values = [
+        product.name,
+        product.sku,
+        product.slug,
+        product.description,
+        product.ingredients,
+        product.category.name if product.category_id else '',
+        product.category.slug if product.category_id else '',
+        product.get_stock_status_display(),
+    ]
+    return normalize_search_value(' '.join(str(value or '') for value in values))
+
+
+def filter_products_by_search(products, query):
+    terms = normalize_search_value(query).split()
+    if not terms:
+        return products
+    return [product for product in products if all(term in product_search_haystack(product) for term in terms)]
+
+
 def home(request):
     featured_products = Product.objects.filter(is_active=True, is_featured=True).select_related('category')[:6]
     categories = ProductCategory.objects.filter(is_active=True)[:8]
@@ -366,9 +394,9 @@ def site_admin_user_update(request, pk):
 @user_passes_test(is_site_admin)
 def site_admin_catalog(request):
     query = request.GET.get('q', '').strip()
-    products = Product.objects.select_related('category')
+    products = Product.objects.select_related('category').order_by('name')
     if query:
-        products = products.filter(Q(name__icontains=query) | Q(sku__icontains=query) | Q(category__name__icontains=query))
+        products = filter_products_by_search(products, query)
     categories = ProductCategory.objects.all()
     return render(
         request,

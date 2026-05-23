@@ -326,6 +326,24 @@ class OrderTests(TestCase):
         self.assertContains(response, '4')
         self.assertContains(response, self.product.price * 4)
 
+    def test_site_admin_catalog_search_is_case_insensitive_for_cyrillic(self):
+        admin = User.objects.create_user(username='admin', password='StrongPass12345', is_staff=True)
+        self.client.login(username='admin', password='StrongPass12345')
+
+        response = self.client.get(reverse('site_admin_catalog'), {'q': 'торт'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.product.name)
+
+    def test_site_admin_catalog_search_finds_multiple_terms_and_description(self):
+        admin = User.objects.create_user(username='admin', password='StrongPass12345', is_staff=True)
+        self.client.login(username='admin', password='StrongPass12345')
+
+        response = self.client.get(reverse('site_admin_catalog'), {'q': 'шоколадный прага'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.product.name)
+
     def test_customer_cannot_open_site_admin_directly(self):
         self.client.login(username='buyer', password='StrongPass12345')
         response = self.client.get(reverse('site_admin_orders'))
